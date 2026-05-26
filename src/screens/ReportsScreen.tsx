@@ -1,5 +1,12 @@
 import React, {useMemo, useState} from 'react';
-import {StyleSheet, Text, View, useWindowDimensions} from 'react-native';
+import {
+  StyleSheet, 
+  Text, 
+  View, 
+  useWindowDimensions, 
+  Share, 
+  Alert
+} from 'react-native';
 
 import {Button, Field, Segmented} from '../components/FormControls';
 import {Card, Screen, SectionHeader} from '../components/Screen';
@@ -57,14 +64,61 @@ const ReportsScreen = () => {
     request => request.status === 'menunggu',
   ).length;
 
+  // FITUR BARU: Fungsi untuk mengekspor dan membagikan laporan
+  const handleExport = async () => {
+    try {
+      setMessage('Menyiapkan laporan...');
+
+      // 1. Membuat Header Laporan
+      let reportText = `📊 *LAPORAN ABSENSI PEGAWAI*\n`;
+      reportText += `Periode: ${period}\n`;
+      reportText += `Departemen: ${department}\n\n`;
+      
+      // 2. Membuat Ringkasan Data
+      reportText += `*RINGKASAN:*\n`;
+      reportText += `- Total Pegawai: ${filteredRecords.length}\n`;
+      reportText += `- Hadir Tepat Waktu: ${countByStatus('hadir')}\n`;
+      reportText += `- Terlambat: ${countByStatus('terlambat')}\n`;
+      reportText += `- Izin/Alpa: ${countByStatus('izin') + countByStatus('alpa')}\n\n`;
+      
+      // 3. Membuat Daftar Hadir Detail
+      reportText += `*RINCIAN KEHADIRAN:*\n`;
+      reportText += `--------------------------\n`;
+
+      filteredRecords.forEach((record, index) => {
+        reportText += `${index + 1}. ${record.name} (${record.department})\n`;
+        reportText += `   Status: ${record.status.toUpperCase()}\n`;
+        reportText += `   Jam Masuk: ${record.checkIn || '-'}\n`;
+        reportText += `   Jam Pulang: ${record.checkOut || '-'}\n`;
+        reportText += `   Catatan: ${record.proof?.note || '-'}\n\n`;
+      });
+
+      // 4. Memanggil fitur Share bawaan HP
+      const result = await Share.share({
+        message: reportText,
+        title: `Laporan Absensi - ${period}`,
+      });
+
+      // 5. Cek aksi pengguna
+      if (result.action === Share.sharedAction) {
+        setMessage('Laporan berhasil diekspor & dibagikan!');
+      } else if (result.action === Share.dismissedAction) {
+        setMessage('Export dibatalkan oleh pengguna.');
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.message);
+      setMessage('Gagal mengekspor laporan.');
+    }
+  };
+
   return (
-    <Screen title="Laporan Absensi" badge="Rekap frontend">
+    <Screen title="Laporan Absensi" badge="Export to WhatsApp/Email">
       <View style={[styles.grid, isWide && styles.gridWide]}>
         <View style={styles.mainColumn}>
           <Card>
             <SectionHeader
               title="Filter Laporan"
-              subtitle="Nanti bisa disambungkan ke export PDF atau Excel"
+              subtitle="Pilih periode dan departemen untuk menyesuaikan data"
             />
             <View style={styles.formGap}>
               <Field
@@ -120,13 +174,13 @@ const ReportsScreen = () => {
               </Text>
             </View>
             <Button
-              label="Simulasikan Export"
-              onPress={() => setMessage('Export laporan disiapkan')}
+              label="Kirim Laporan (Share)"
+              onPress={handleExport}
             />
           </Card>
 
           <Card>
-            <SectionHeader title="Status" />
+            <SectionHeader title="Status Aktivitas" />
             <Text style={styles.message}>{message}</Text>
           </Card>
         </View>

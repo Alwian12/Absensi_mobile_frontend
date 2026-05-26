@@ -1,5 +1,15 @@
 import React, {useState} from 'react';
-import {StyleSheet, Text, View, useWindowDimensions} from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+  PermissionsAndroid,
+  Platform,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
+import Geolocation from 'react-native-geolocation-service';
 
 import {AttendanceBadge} from '../components/Badge';
 import {Button, Field, Segmented} from '../components/FormControls';
@@ -18,6 +28,8 @@ const AttendanceScreen = () => {
   const [note, setNote] = useState('');
   const [draftProof, setDraftProof] = useState('');
   const [message, setMessage] = useState('Siapkan bukti foto sebelum absen');
+  const [isLoading, setIsLoading] = useState(false);
+  const [location, setLocation] = useState<{lat: number; lng: number} | null>(null);
 
   const captureProof = () => {
     setDraftProof(
@@ -26,26 +38,81 @@ const AttendanceScreen = () => {
     setMessage('Bukti foto siap dipakai untuk absen');
   };
 
-  const saveAttendance = (action: 'masuk' | 'pulang') => {
+  const requestLocationPermission = async () => {
+    if (Platform.OS === 'android') {
+      try {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+          {
+            title: 'Izin Akses Lokasi',
+            message: 'Aplikasi absensi membutuhkan lokasi Anda saat ini.',
+            buttonNeutral: 'Nanti',
+            buttonNegative: 'Batal',
+            buttonPositive: 'OK',
+          },
+        );
+        return granted === PermissionsAndroid.RESULTS.GRANTED;
+      } catch (err) {
+        console.warn(err);
+        return false;
+      }
+    }
+    return true; // Untuk iOS biasanya menggunakan Geolocation.requestAuthorization()
+  };
+
+  const saveAttendance = async (action: 'masuk' | 'pulang') => {
     if (!draftProof) {
       setMessage('Ambil foto bukti dulu sebelum menyimpan absensi');
       return;
     }
 
-    const result = submitAttendance(action, photoMode, note);
-    setMessage(result);
-    setDraftProof('');
-    setNote('');
+    setIsLoading(true);
+    setMessage('Memvalidasi lokasi GPS...');
+
+    const hasPermission = await requestLocationPermission();
+    if (!hasPermission) {
+      setMessage('Izin lokasi ditolak, gagal absen.');
+      setIsLoading(false);
+      return;
+    }
+
+    Geolocation.getCurrentPosition(
+      position => {
+        const coords = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        };
+        setLocation(coords);
+
+        // Gabungkan koordinat lokasi ke dalam note/catatan absensi
+        const finalNote = note 
+          ? `${note} (GPS: ${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)})` 
+          : `GPS: ${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`;
+
+        const result = submitAttendance(action, photoMode, finalNote);
+        setMessage(`${result}\nKoordinat: ${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`);
+        setDraftProof('');
+        setNote('');
+        setIsLoading(false);
+      },
+      error => {
+        Alert.alert('Error GPS', 'Gagal mendapatkan lokasi. Pastikan GPS menyala.');
+        setMessage('Gagal absen: Lokasi tidak ditemukan.');
+        console.log(error);
+        setIsLoading(false);
+      },
+      {enableHighAccuracy: true, timeout: 15000, maximumAge: 10000},
+    );
   };
 
   return (
-    <Screen title="Absensi Foto" badge="Bukti, bukan face verification">
+    <Screen title="Absensi Foto" badge="Dilengkapi Validasi GPS">
       <View style={[styles.grid, isWide && styles.gridWide]}>
         <View style={styles.mainColumn}>
           <Card>
             <SectionHeader
               title="Absen Hari Ini"
-              subtitle="Foto hanya menjadi lampiran bukti kehadiran"
+              subtitle="Foto dan GPS digunakan sebagai bukti kehadiran"
             />
             <View style={styles.employeeRow}>
               <View style={styles.avatar}>
@@ -76,12 +143,17 @@ const AttendanceScreen = () => {
                 </Text>
               </View>
               <View style={styles.photoInfo}>
-                <Text style={styles.infoLabel}>Status foto</Text>
+                <Text style={styles.infoLabel}>Status foto & Lokasi</Text>
                 <Text style={styles.infoValue}>
                   {draftProof || activeEmployee.proof?.note || 'Belum ada foto'}
                 </Text>
+                {location && (
+                  <Text style={styles.infoValue}>
+                    📍 {location.lat.toFixed(4)}, {location.lng.toFixed(4)}
+                  </Text>
+                )}
                 <Text style={styles.infoHint}>
-                  Tidak ada pencocokan wajah, liveness, atau biometrik.
+                  Merekam waktu dan titik kordinat saat tombol absen ditekan.
                 </Text>
               </View>
             </View>
@@ -95,22 +167,25 @@ const AttendanceScreen = () => {
               <Field
                 value={note}
                 onChangeText={setNote}
-                placeholder="Catatan foto/lokasi tugas"
+                placeholder="Catatan foto/lokasi tugas (Opsional)"
               />
-              <Button label="Ambil Foto Bukti" onPress={captureProof} />
+              <Button label="Ambil Foto Bukti (Draft)" onPress={captureProof} disabled={isLoading} />
             </View>
 
             <View style={styles.actionRow}>
               <Button
-                label="Simpan Absen Masuk"
+                label={isLoading ? "Memproses..." : "Simpan Absen Masuk"}
                 onPress={() => saveAttendance('masuk')}
+                disabled={isLoading}
               />
               <Button
-                label="Simpan Absen Pulang"
+                label={isLoading ? "Memproses..." : "Simpan Absen Pulang"}
                 onPress={() => saveAttendance('pulang')}
                 variant="secondary"
+                disabled={isLoading}
               />
             </View>
+            {isLoading && <ActivityIndicator size="small" color={colors.brand} style={{marginTop: 10}} />}
             <Text style={styles.message}>{message}</Text>
           </Card>
         </View>
@@ -131,12 +206,10 @@ const AttendanceScreen = () => {
           <Card>
             <SectionHeader
               title="Catatan Metode"
-              subtitle="Sesuai arahan: foto bukan verifikasi wajah"
+              subtitle="Upgrade: Geolocation Active"
             />
             <Text style={styles.paragraph}>
-              Bukti foto disimpan sebagai lampiran aktivitas. Validasi yang
-              disiapkan di frontend adalah waktu, lokasi kerja, catatan, dan
-              status absen.
+              Aplikasi kini merekam titik koordinat (Latitude & Longitude) secara langsung saat proses absen dilakukan untuk mencegah kecurangan pemalsuan lokasi.
             </Text>
           </Card>
         </View>
