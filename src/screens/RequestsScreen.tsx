@@ -1,183 +1,112 @@
-import React, {useMemo, useState} from 'react';
-import {StyleSheet, Text, View, useWindowDimensions} from 'react-native';
+import React, { useState, useCallback } from 'react';
+import {
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+  Alert,
+  ActivityIndicator,
+  FlatList,
+  Image,
+} from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { launchImageLibrary } from 'react-native-image-picker'; // Kita pakai galeri untuk surat sakit
 
-import {RequestBadge} from '../components/Badge';
-import {Button, Field, Segmented} from '../components/FormControls';
-import {Card, Screen, SectionHeader} from '../components/Screen';
-import {colors} from '../components/Theme';
-import {useAppStore} from '../state/AppStore';
+import api from '../utils/api';
+import { Button, Field, Segmented } from '../components/FormControls';
+import { Card, Screen, SectionHeader } from '../components/Screen';
+import { colors } from '../components/Theme';
 
-const requestTypes = ['Izin', 'Sakit', 'Lembur', 'Koreksi Absensi'] as const;
+const jenisIzinOptions = ['sakit', 'izin', 'cuti', 'pulang_cepat'];
 
 const RequestsScreen = () => {
-  const {width} = useWindowDimensions();
+  const { width } = useWindowDimensions();
   const isWide = width >= 920;
-  const {requests, addRequest, decideRequest, user, activeEmployee} =
-    useAppStore();
-  const [type, setType] = useState<(typeof requestTypes)[number]>('Izin');
-  const [date, setDate] = useState('26 Mei 2026');
-  const [reason, setReason] = useState('');
-  const [message, setMessage] = useState('Pengajuan baru akan masuk antrean HR');
 
-  const isManager = user?.role !== 'pegawai';
+  // State Daftar Izin
+  const [requestsList, setRequestsList] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const visibleRequests = useMemo(
-    () =>
-      isManager
-        ? requests
-        : requests.filter(request => request.employeeId === activeEmployee.id),
-    [activeEmployee.id, isManager, requests],
+  // State Form Pengajuan
+  const [jenis, setJenis] = useState(jenisIzinOptions[0]);
+  const [alasan, setAlasan] = useState('');
+  // Untuk format tanggal, kita buat sederhana YYYY-MM-DD
+  const [tanggalMulai, setTanggalMulai] = useState(new Date().toISOString().split('T')[0]);
+  const [tanggalSelesai, setTanggalSelesai] = useState(new Date().toISOString().split('T')[0]);
+  
+  const [lampiran, setLampiran] = useState<any>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Load data setiap kali layar dibuka
+  useFocusEffect(
+    useCallback(() => {
+      fetchRequests();
+    }, [])
   );
 
-  const submit = () => {
-    const result = addRequest({
-      type,
-      date,
-      reason,
-    });
-    setReason('');
-    setMessage(result);
+  const fetchRequests = async () => {
+    setIsLoading(true);
+    try {
+      const response = await api.get('/api/izin');
+      setRequestsList(response.data);
+    } catch (error) {
+      console.error('Error fetching izin:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  return (
-    <Screen title="Pengajuan Absensi" badge="Izin, lembur, koreksi">
-      <View style={[styles.grid, isWide && styles.gridWide]}>
-        <View style={styles.mainColumn}>
-          <Card>
-            <SectionHeader
-              title="Form Pengajuan"
-              subtitle="Data tersimpan lokal selama sesi frontend"
-            />
-            <View style={styles.formGap}>
-              <Segmented
-                items={[...requestTypes]}
-                value={type}
-                onChange={setType}
-              />
-              <Field value={date} onChangeText={setDate} placeholder="Tanggal" />
-              <Field
-                value={reason}
-                onChangeText={setReason}
-                placeholder="Alasan atau catatan"
-                multiline
-              />
-              <Button label="Kirim Pengajuan" onPress={submit} />
-              <Text style={styles.message}>{message}</Text>
-            </View>
-          </Card>
-        </View>
+  const pickImage = async () => {
+    const result = await launchImageLibrary({
+      mediaType: 'photo',
+      quality: 0.8,
+    });
 
-        <View style={[styles.sideColumn, isWide && styles.sideColumnWide]}>
-          <Card>
-            <SectionHeader
-              title="Daftar Pengajuan"
-              subtitle={
-                isManager
-                  ? 'Admin dan atasan dapat memberi keputusan'
-                  : 'Pengajuan milik pegawai aktif'
-              }
-              action={`${visibleRequests.length} data`}
-            />
-            <View style={styles.requestList}>
-              {visibleRequests.map(item => (
-                <View key={item.id} style={styles.requestCard}>
-                  <View style={styles.requestTop}>
-                    <View style={styles.requestText}>
-                      <Text style={styles.requestType}>{item.type}</Text>
-                      <Text style={styles.requestEmployee}>
-                        {item.employee} - {item.date}
-                      </Text>
-                    </View>
-                    <RequestBadge status={item.status} />
-                  </View>
-                  <Text style={styles.reason}>{item.reason}</Text>
-                  {isManager && item.status === 'menunggu' ? (
-                    <View style={styles.decisionRow}>
-                      <Button
-                        label="Setujui"
-                        onPress={() => decideRequest(item.id, 'disetujui')}
-                      />
-                      <Button
-                        label="Tolak"
-                        onPress={() => decideRequest(item.id, 'ditolak')}
-                        variant="danger"
-                      />
-                    </View>
-                  ) : null}
-                </View>
-              ))}
-            </View>
-          </Card>
-        </View>
-      </View>
-    </Screen>
-  );
-};
+    if (!result.didCancel && result.assets) {
+      setLampiran(result.assets[0]);
+    }
+  };
 
-export default RequestsScreen;
+  const handleSubmit = async () => {
+    if (alasan.trim().length < 10) {
+      Alert.alert('Peringatan', 'Alasan harus diisi minimal 10 karakter!');
+      return;
+    }
 
-const styles = StyleSheet.create({
-  grid: {
-    gap: 16,
-  },
-  gridWide: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  mainColumn: {
-    flex: 1,
-  },
-  sideColumn: {
-    gap: 16,
-  },
-  sideColumnWide: {
-    width: 520,
-  },
-  formGap: {
-    gap: 10,
-  },
-  message: {
-    color: colors.muted,
-    fontSize: 13,
-    textAlign: 'center',
-  },
-  requestList: {
-    gap: 10,
-  },
-  requestCard: {
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.line,
-    padding: 12,
-    gap: 10,
-  },
-  requestTop: {
-    flexDirection: 'row',
-    gap: 10,
-    justifyContent: 'space-between',
-  },
-  requestText: {
-    flex: 1,
-    minWidth: 0,
-  },
-  requestType: {
-    color: colors.ink,
-    fontSize: 15,
-    fontWeight: '900',
-    letterSpacing: 0,
-  },
-  requestEmployee: {
-    color: colors.muted,
-    fontSize: 13,
-    marginTop: 4,
-  },
-  reason: {
-    color: colors.muted,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  decisionRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-});
+    if (new Date(tanggalMulai) > new Date(tanggalSelesai)) {
+      Alert.alert('Peringatan', 'Tanggal mulai tidak boleh lebih dari tanggal selesai!');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('tanggal_mulai', tanggalMulai);
+      formData.append('tanggal_selesai', tanggalSelesai);
+      formData.append('jenis', jenis);
+      formData.append('alasan', alasan);
+      
+      if (lampiran) {
+        formData.append('lampiran', {
+          uri: lampiran.uri,
+          type: lampiran.type || 'image/jpeg',
+          name: lampiran.fileName || 'surat_izin.jpg',
+        } as any);
+      }
+
+      const response = await api.post('/api/izin', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      Alert.alert('Sukses', response.data.message);
+      
+      // Reset form
+      setAlasan('');
+      setLampiran(null);
+      
+      // Tarik ulang data list
+      fetchRequests();
+
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'G

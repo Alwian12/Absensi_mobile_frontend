@@ -1,153 +1,159 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
-  Pressable,
-  StatusBar,
   StyleSheet,
   Text,
   View,
-  useWindowDimensions,
+  TextInput,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert
 } from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
-
-import {colors} from '../components/Theme';
-import {useAppStore} from '../state/AppStore';
-import type {UserRole} from '../types/attendance';
-
-const roles: Array<{
-  role: UserRole;
-  title: string;
-  description: string;
-}> = [
-  {
-    role: 'pegawai',
-    title: 'Pegawai',
-    description: 'Absen masuk, pulang, dan kirim pengajuan pribadi.',
-  },
-  {
-    role: 'admin',
-    title: 'Admin HR',
-    description: 'Pantau absensi tim, laporan, dan data pengajuan.',
-  },
-  {
-    role: 'atasan',
-    title: 'Atasan',
-    description: 'Review pengajuan dan pantau disiplin kehadiran.',
-  },
-];
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import api from '../utils/api'; // Import konfigurasi axios kita
+import { useAppStore } from '../state/AppStore';
+import { colors } from '../components/Theme';
 
 const LoginScreen = () => {
-  const {signIn} = useAppStore();
-  const {width} = useWindowDimensions();
-  const isWide = width >= 820;
+  const { signIn } = useAppStore();
+  const [loginType, setLoginType] = useState<'user' | 'admin'>('user');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async () => {
+    if (!username || !password) {
+      Alert.alert('Error', 'Username/Nama dan Password wajib diisi!');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      let response;
+      
+      // Menembak API Backend sesuai tipe user
+      if (loginType === 'admin') {
+        response = await api.post('/api/auth/admin/login', {
+          username: username.trim(),
+          password: password
+        });
+      } else {
+        response = await api.post('/api/auth/login', {
+          nama: username.trim(), // Sesuai dengan field di backend web
+          password: password
+        });
+      }
+
+      const { token, user, message } = response.data;
+
+      // 1. Simpan Token dan Data User ke Storage HP (Sesi Persisten)
+      await AsyncStorage.setItem('userToken', token);
+      await AsyncStorage.setItem('userData', JSON.stringify(user));
+      await AsyncStorage.setItem('userRole', loginType);
+
+      Alert.alert('Sukses', message || 'Login Berhasil!');
+      
+      // 2. Ubah State Global untuk pindah ke halaman Dashboard
+      signIn(loginType === 'admin' ? 'admin' : 'employee');
+
+    } catch (error: any) {
+      // Tangkap pesan error spesifik dari backend (misal: "Nama atau password salah")
+      const errorMessage = error.response?.data?.message || 'Gagal terhubung ke server. Pastikan backend menyala.';
+      Alert.alert('Login Gagal', errorMessage);
+      console.error('Login Error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.brand} />
-      <View style={[styles.page, isWide && styles.pageWide]}>
-        <View style={styles.hero}>
-          <Text style={styles.eyebrow}>SIAP Absensi Kantor</Text>
-          <Text style={styles.title}>Absensi dengan bukti foto kerja</Text>
-          <Text style={styles.subtitle}>
-            Foto dipakai sebagai lampiran kehadiran, bukan verifikasi muka.
-            Pilih role demo untuk masuk ke fitur.
-          </Text>
+    <View style={styles.container}>
+      <View style={styles.card}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Absensi Honor Kantor</Text>
+          <Text style={styles.subtitle}>Login Sistem Absensi</Text>
+          <View style={styles.divider} />
         </View>
 
-        <View style={styles.roleGrid}>
-          {roles.map(item => (
-            <Pressable
-              key={item.role}
-              onPress={() => signIn(item.role)}
-              style={({pressed}) => [
-                styles.roleCard,
-                isWide && styles.roleCardWide,
-                pressed && styles.pressed,
-              ]}>
-              <Text style={styles.roleTitle}>{item.title}</Text>
-              <Text style={styles.roleDescription}>{item.description}</Text>
-              <Text style={styles.roleAction}>Masuk sebagai {item.title}</Text>
-            </Pressable>
-          ))}
+        <View style={styles.tabContainer}>
+          <TouchableOpacity
+            style={[styles.tabButton, loginType === 'user' && styles.tabActiveUser]}
+            onPress={() => setLoginType('user')}>
+            <Text style={[styles.tabText, loginType === 'user' && styles.tabTextActiveUser]}>
+              Pegawai Honor
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tabButton, loginType === 'admin' && styles.tabActiveAdmin]}
+            onPress={() => setLoginType('admin')}>
+            <Text style={[styles.tabText, loginType === 'admin' && styles.tabTextActiveAdmin]}>
+              Administrator
+            </Text>
+          </TouchableOpacity>
         </View>
+
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>
+            {loginType === 'admin' ? 'Username Admin' : 'Nama Lengkap'}
+          </Text>
+          <TextInput
+            style={styles.input}
+            placeholder={loginType === 'admin' ? "Masukkan username" : "Masukkan nama lengkap"}
+            value={username}
+            onChangeText={setUsername}
+            autoCapitalize="none"
+          />
+        </View>
+
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>Password</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Masukkan password"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+          />
+        </View>
+
+        <TouchableOpacity 
+          style={[styles.loginBtn, loginType === 'admin' && styles.loginBtnAdmin]} 
+          onPress={handleLogin}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.loginBtnText}>
+              {loginType === 'admin' ? 'Login Admin' : 'Login'}
+            </Text>
+          )}
+        </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 
 export default LoginScreen;
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: colors.brand,
-  },
-  page: {
-    flex: 1,
-    padding: 20,
-    justifyContent: 'center',
-    gap: 22,
-  },
-  pageWide: {
-    maxWidth: 980,
-    alignSelf: 'center',
-    width: '100%',
-  },
-  hero: {
-    gap: 10,
-  },
-  eyebrow: {
-    color: '#A7D1E8',
-    fontSize: 13,
-    fontWeight: '900',
-  },
-  title: {
-    color: '#FFFFFF',
-    fontSize: 34,
-    fontWeight: '900',
-    letterSpacing: 0,
-  },
-  subtitle: {
-    color: '#D6E6F2',
-    fontSize: 15,
-    lineHeight: 22,
-    maxWidth: 620,
-  },
-  roleGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  roleCard: {
-    width: '100%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#D9E5EC',
-  },
-  roleCardWide: {
-    flex: 1,
-    minWidth: 0,
-  },
-  roleTitle: {
-    color: colors.ink,
-    fontSize: 20,
-    fontWeight: '900',
-    letterSpacing: 0,
-  },
-  roleDescription: {
-    color: colors.muted,
-    fontSize: 13,
-    lineHeight: 18,
-    marginTop: 8,
-  },
-  roleAction: {
-    color: colors.green,
-    fontSize: 13,
-    fontWeight: '900',
-    marginTop: 16,
-  },
-  pressed: {
-    opacity: 0.78,
-  },
+  container: { flex: 1, backgroundColor: colors.brandSoft, justifyContent: 'center', padding: 20 },
+  card: { backgroundColor: colors.surface, borderRadius: 16, padding: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 5 },
+  header: { alignItems: 'center', marginBottom: 30 },
+  title: { fontSize: 24, fontWeight: '900', color: colors.brandDark, textAlign: 'center' },
+  subtitle: { fontSize: 16, color: colors.muted, marginTop: 4 },
+  divider: { width: 80, height: 4, backgroundColor: colors.brand, borderRadius: 2, marginTop: 12 },
+  tabContainer: { flexDirection: 'row', backgroundColor: '#f1f5f9', borderRadius: 12, padding: 4, marginBottom: 24 },
+  tabButton: { flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: 8 },
+  tabActiveUser: { backgroundColor: colors.surface, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 3, elevation: 2 },
+  tabActiveAdmin: { backgroundColor: colors.surface, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 3, elevation: 2 },
+  tabText: { fontWeight: 'bold', color: colors.muted },
+  tabTextActiveUser: { color: colors.brand },
+  tabTextActiveAdmin: { color: '#9333ea' },
+  formGroup: { marginBottom: 16 },
+  label: { fontSize: 14, fontWeight: 'bold', color: colors.ink, marginBottom: 8 },
+  input: { backgroundColor: '#f8fafc', borderWidth: 1, borderColor: colors.line, borderRadius: 8, paddingHorizontal: 16, paddingVertical: 14, fontSize: 16, color: colors.ink },
+  loginBtn: { backgroundColor: colors.brand, borderRadius: 8, paddingVertical: 16, alignItems: 'center', marginTop: 10 },
+  loginBtnAdmin: { backgroundColor: '#9333ea' },
+  loginBtnText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
 });

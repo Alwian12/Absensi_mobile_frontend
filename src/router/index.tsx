@@ -1,10 +1,13 @@
 import React from 'react';
-import {NavigationContainer} from '@react-navigation/native';
-import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
-import {createNativeStackNavigator} from '@react-navigation/native-stack';
+import { View, ActivityIndicator } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-import {colors} from '../components/Theme';
-import {AppStoreProvider, useAppStore} from '../state/AppStore';
+import { colors } from '../components/Theme';
+import { AppStoreProvider, useAppStore } from '../state/AppStore';
+
+// Import semua layar yang sudah kita "upgrade"
 import AttendanceScreen from '../screens/AttendanceScreen';
 import DashboardScreen from '../screens/DashboardScreen';
 import LoginScreen from '../screens/LoginScreen';
@@ -17,14 +20,14 @@ const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
 const MainTabs = () => {
-  const {user} = useAppStore();
-  const isManager = user?.role !== 'pegawai';
+  const { userRole } = useAppStore();
+  const isManager = userRole === 'admin';
 
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.green,
+        tabBarActiveTintColor: colors.brand, // Warna aktif menyesuaikan tema
         tabBarInactiveTintColor: '#6B7280',
         tabBarLabelStyle: {
           fontSize: 12,
@@ -40,6 +43,7 @@ const MainTabs = () => {
       <Tab.Screen name="Beranda" component={DashboardScreen} />
       <Tab.Screen name="Absensi" component={AttendanceScreen} />
       <Tab.Screen name="Pengajuan" component={RequestsScreen} />
+      {/* Tab "Tim" hanya muncul jika yang login adalah Admin */}
       {isManager ? <Tab.Screen name="Tim" component={TeamScreen} /> : null}
       <Tab.Screen name="Laporan" component={ReportsScreen} />
       <Tab.Screen name="Profil" component={ProfileScreen} />
@@ -48,12 +52,21 @@ const MainTabs = () => {
 };
 
 const RouterContent = () => {
-  const {user} = useAppStore();
+  const { isLoggedIn, isLoading } = useAppStore();
+
+  // Menampilkan layar loading saat mengecek token di memori HP
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.brandSoft }}>
+        <ActivityIndicator size="large" color={colors.brand} />
+      </View>
+    );
+  }
 
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{headerShown: false}}>
-        {user ? (
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        {isLoggedIn ? (
           <Stack.Screen name="Main" component={MainTabs} />
         ) : (
           <Stack.Screen name="Login" component={LoginScreen} />

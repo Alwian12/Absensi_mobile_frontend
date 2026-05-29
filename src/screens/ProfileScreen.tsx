@@ -1,221 +1,231 @@
-import React, {useState} from 'react';
-import {Switch, StyleSheet, Text, View, useWindowDimensions} from 'react-native';
+import React, { useState, useCallback } from 'react';
+import {
+  StyleSheet,
+  Text,
+  View,
+  Alert,
+  ActivityIndicator,
+  ScrollView,
+} from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
 
-import {Button} from '../components/FormControls';
-import {Card, Screen, SectionHeader} from '../components/Screen';
-import {colors} from '../components/Theme';
-import {useAppStore} from '../state/AppStore';
+import api from '../utils/api';
+import { Button } from '../components/FormControls';
+import { Card, Screen, SectionHeader } from '../components/Screen';
+import { colors } from '../components/Theme';
+import { useAppStore } from '../state/AppStore';
 
 const ProfileScreen = () => {
-  const {width} = useWindowDimensions();
-  const isWide = width >= 920;
-  const {user, activeEmployee, signOut} = useAppStore();
-  const [photoRequired, setPhotoRequired] = useState(true);
-  const [locationRequired, setLocationRequired] = useState(true);
-  const [offlineQueue, setOfflineQueue] = useState(true);
+  const { signOut } = useAppStore();
+  const [profileData, setProfileData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Ambil data profil setiap kali layar ini dibuka
+  useFocusEffect(
+    useCallback(() => {
+      fetchProfile();
+    }, [])
+  );
+
+  const fetchProfile = async () => {
+    setIsLoading(true);
+    try {
+      const roleStr = await AsyncStorage.getItem('userRole');
+      
+      // Tembak API Profile di Backend
+      try {
+        const response = await api.get('/api/auth/me');
+        setProfileData({ ...response.data, roleType: roleStr });
+      } catch (apiError) {
+        // Jika gagal API (misal token admin beda jalur), ambil cadangan dari Storage
+        const userStr = await AsyncStorage.getItem('userData');
+        if (userStr) {
+          setProfileData({ ...JSON.parse(userStr), roleType: roleStr });
+        }
+      }
+    } catch (error) {
+      console.error('Error memuat profil:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fungsi Logout Terintegrasi
+  const handleLogout = () => {
+    Alert.alert(
+      'Konfirmasi Logout',
+      'Apakah Anda yakin ingin keluar dari aplikasi?',
+      [
+        { text: 'Batal', style: 'cancel' },
+        {
+          text: 'Keluar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // 1. Hapus semua data sesi (Token JWT dll) dari memori HP
+              await AsyncStorage.removeItem('userToken');
+              await AsyncStorage.removeItem('userData');
+              await AsyncStorage.removeItem('userRole');
+              
+              // 2. Ubah state global agar navigasi kembali ke layar Login
+              signOut();
+            } catch (e) {
+              Alert.alert('Error', 'Gagal melakukan logout');
+            }
+          },
+        },
+      ]
+    );
+  };
 
   return (
-    <Screen title="Profil dan Pengaturan" badge="Siap disesuaikan desain">
-      <View style={[styles.grid, isWide && styles.gridWide]}>
-        <View style={styles.mainColumn}>
-          <Card>
-            <SectionHeader
-              title="Profil Aktif"
-              subtitle="Akun demo untuk menguji role aplikasi"
-            />
-            <View style={styles.profileRow}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>
-                  {activeEmployee.name
-                    .split(' ')
-                    .map(part => part[0])
-                    .join('')
-                    .slice(0, 2)}
+    <Screen title="Profil Pengguna" badge="Data Tersinkronisasi">
+      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+        <Card style={styles.card}>
+          {isLoading ? (
+            <ActivityIndicator size="large" color={colors.brand} style={{ marginVertical: 30 }} />
+          ) : (
+            <>
+              <View style={styles.header}>
+                <View style={styles.avatarLarge}>
+                  <Text style={styles.avatarTextLarge}>
+                    {profileData?.nama ? profileData.nama.substring(0, 2).toUpperCase() : 'UI'}
+                  </Text>
+                </View>
+                <Text style={styles.name}>{profileData?.nama || 'Nama Pegawai'}</Text>
+                <Text style={styles.role}>
+                  {profileData?.roleType === 'admin' ? 'Administrator' : 'Pegawai Honor'}
                 </Text>
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>Diskominfo Provinsi</Text>
+                </View>
               </View>
-              <View style={styles.profileText}>
-                <Text style={styles.name}>{user?.name}</Text>
-                <Text style={styles.meta}>
-                  {activeEmployee.role} - {activeEmployee.department}
-                </Text>
-                <Text style={styles.meta}>Role aplikasi: {user?.role}</Text>
+
+              <View style={styles.infoSection}>
+                <SectionHeader title="Informasi Pribadi" />
+                
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Email</Text>
+                  <Text style={styles.infoValue}>{profileData?.email || '-'}</Text>
+                </View>
+
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Nomor HP</Text>
+                  <Text style={styles.infoValue}>{profileData?.no_hp || '-'}</Text>
+                </View>
+
+                {profileData?.roleType !== 'admin' && (
+                  <>
+                    <View style={styles.infoRow}>
+                      <Text style={styles.infoLabel}>Asal Sekolah/Instansi</Text>
+                      <Text style={styles.infoValue}>{profileData?.asal_sekolah || '-'}</Text>
+                    </View>
+                    <View style={styles.infoRow}>
+                      <Text style={styles.infoLabel}>Jurusan/Divisi</Text>
+                      <Text style={styles.infoValue}>{profileData?.jurusan || '-'}</Text>
+                    </View>
+                  </>
+                )}
               </View>
-            </View>
-          </Card>
 
-          <Card>
-            <SectionHeader
-              title="Pengaturan Absensi"
-              subtitle="Kontrol frontend untuk aturan standar"
-            />
-            <SettingRow
-              title="Wajib bukti foto"
-              description="Foto menjadi lampiran, bukan verifikasi muka"
-              value={photoRequired}
-              onValueChange={setPhotoRequired}
-            />
-            <SettingRow
-              title="Validasi lokasi"
-              description="Cocok untuk radius kantor dan pegawai lapangan"
-              value={locationRequired}
-              onValueChange={setLocationRequired}
-            />
-            <SettingRow
-              title="Antrean offline"
-              description="Draft absensi bisa disimpan sebelum sinkron"
-              value={offlineQueue}
-              onValueChange={setOfflineQueue}
-            />
-          </Card>
-        </View>
-
-        <View style={[styles.sideColumn, isWide && styles.sideColumnWide]}>
-          <Card>
-            <SectionHeader
-              title="Kesiapan Integrasi"
-              subtitle="Bagian yang nanti disambungkan backend"
-            />
-            <View style={styles.integrationList}>
-              <InfoLine label="API absensi" value="Belum tersambung" />
-              <InfoLine label="Kamera/upload" value="Siap dipasang" />
-              <InfoLine label="Export laporan" value="Simulasi frontend" />
-              <InfoLine label="Role akses" value="Pegawai/Admin/Atasan" />
-            </View>
-          </Card>
-
-          <Card>
-            <Button label="Keluar" onPress={signOut} variant="danger" />
-          </Card>
-        </View>
-      </View>
+              <View style={styles.actionSection}>
+                <Button 
+                  label="Ganti Password" 
+                  onPress={() => Alert.alert('Info', 'Fitur ganti password via aplikasi segera hadir.')} 
+                  variant="secondary" 
+                />
+                <View style={{ height: 12 }} />
+                <Button 
+                  label="Logout Keluar Sistem" 
+                  onPress={handleLogout} 
+                  style={{ backgroundColor: colors.danger || '#ef4444' }} // Merah untuk logout
+                />
+              </View>
+            </>
+          )}
+        </Card>
+      </ScrollView>
     </Screen>
   );
 };
 
-const SettingRow = ({
-  title,
-  description,
-  value,
-  onValueChange,
-}: {
-  title: string;
-  description: string;
-  value: boolean;
-  onValueChange: (value: boolean) => void;
-}) => (
-  <View style={styles.settingRow}>
-    <View style={styles.settingText}>
-      <Text style={styles.settingTitle}>{title}</Text>
-      <Text style={styles.settingDescription}>{description}</Text>
-    </View>
-    <Switch value={value} onValueChange={onValueChange} />
-  </View>
-);
-
-const InfoLine = ({label, value}: {label: string; value: string}) => (
-  <View style={styles.infoLine}>
-    <Text style={styles.infoLabel}>{label}</Text>
-    <Text style={styles.infoValue}>{value}</Text>
-  </View>
-);
-
 export default ProfileScreen;
 
 const styles = StyleSheet.create({
-  grid: {
-    gap: 16,
+  container: {
+    paddingBottom: 30,
   },
-  gridWide: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+  card: {
+    padding: 24,
   },
-  mainColumn: {
-    flex: 1,
-    gap: 16,
-  },
-  sideColumn: {
-    gap: 16,
-  },
-  sideColumnWide: {
-    width: 360,
-  },
-  profileRow: {
-    flexDirection: 'row',
+  header: {
     alignItems: 'center',
-    gap: 12,
+    marginBottom: 30,
+    paddingBottom: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.line,
   },
-  avatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 8,
+  avatarLarge: {
+    width: 80,
+    height: 80,
+    borderRadius: 20,
     backgroundColor: '#DDEAF2',
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 16,
   },
-  avatarText: {
+  avatarTextLarge: {
     color: colors.brand,
-    fontSize: 18,
+    fontSize: 28,
     fontWeight: '900',
-  },
-  profileText: {
-    flex: 1,
-    minWidth: 0,
   },
   name: {
-    color: colors.ink,
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '900',
-    letterSpacing: 0,
-  },
-  meta: {
-    color: colors.muted,
-    fontSize: 13,
-    marginTop: 4,
-  },
-  settingRow: {
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.line,
-    padding: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 10,
-  },
-  settingText: {
-    flex: 1,
-    minWidth: 0,
-  },
-  settingTitle: {
     color: colors.ink,
-    fontSize: 14,
-    fontWeight: '900',
+    marginBottom: 4,
   },
-  settingDescription: {
+  role: {
+    fontSize: 15,
     color: colors.muted,
+    marginBottom: 12,
+  },
+  badge: {
+    backgroundColor: colors.brandSoft,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 100,
+  },
+  badgeText: {
+    color: colors.brandDark,
     fontSize: 12,
-    lineHeight: 17,
-    marginTop: 4,
+    fontWeight: 'bold',
   },
-  integrationList: {
-    gap: 10,
+  infoSection: {
+    marginBottom: 30,
   },
-  infoLine: {
-    borderRadius: 8,
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: colors.line,
-    padding: 12,
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
   },
   infoLabel: {
+    fontSize: 14,
     color: colors.muted,
-    fontSize: 12,
-    fontWeight: '900',
+    fontWeight: '600',
   },
   infoValue: {
+    fontSize: 14,
     color: colors.ink,
-    fontSize: 15,
-    fontWeight: '900',
-    marginTop: 5,
+    fontWeight: 'bold',
+    textAlign: 'right',
+    flex: 1,
+    marginLeft: 20,
+  },
+  actionSection: {
+    marginTop: 10,
   },
 });
