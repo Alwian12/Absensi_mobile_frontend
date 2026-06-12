@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { initialAttendanceRecords } from '../data/attendance';
+import type { AttendanceRecord } from '../types/attendance';
 
 type UserRole = 'employee' | 'admin' | null;
 
@@ -7,8 +9,9 @@ type AppStoreValue = {
   isLoggedIn: boolean;
   userRole: UserRole;
   isLoading: boolean;
+  attendanceRecords: AttendanceRecord[];
   signIn: (role: UserRole) => void;
-  signOut: () => void;
+  signOut: () => Promise<void>;
 };
 
 const AppStoreContext = createContext<AppStoreValue | undefined>(undefined);
@@ -17,6 +20,7 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState<UserRole>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [attendanceRecords] = useState(initialAttendanceRecords);
 
   // Otomatis mengecek apakah ada Token tersimpan saat aplikasi pertama kali dibuka
   useEffect(() => {
@@ -46,13 +50,18 @@ export const AppStoreProvider = ({ children }: { children: React.ReactNode }) =>
 
   const signOut = useCallback(async () => {
     // Memastikan memori HP benar-benar bersih saat Logout
-    await AsyncStorage.multiRemove(['userToken', 'userData', 'userRole']);
+    await Promise.all([
+      AsyncStorage.removeItem('userToken'),
+      AsyncStorage.removeItem('userData'),
+      AsyncStorage.removeItem('userRole'),
+    ]);
     setIsLoggedIn(false);
     setUserRole(null);
   }, []);
 
   return (
-    <AppStoreContext.Provider value={{ isLoggedIn, userRole, isLoading, signIn, signOut }}>
+    <AppStoreContext.Provider
+      value={{ isLoggedIn, userRole, isLoading, attendanceRecords, signIn, signOut }}>
       {children}
     </AppStoreContext.Provider>
   );

@@ -14,20 +14,16 @@ import Geolocation from 'react-native-geolocation-service';
 import { launchCamera } from 'react-native-image-picker';
 import api from '../utils/api'; // Import koneksi API kita
 
-import {AttendanceBadge} from '../components/Badge';
-import {Button, Field, Segmented} from '../components/FormControls';
+import {Button, Segmented} from '../components/FormControls';
 import {Card, Screen, SectionHeader} from '../components/Screen';
 import {colors} from '../components/Theme';
 import {photoModes, scheduleItems} from '../data/attendance';
-import {useAppStore} from '../state/AppStore';
 import type {PhotoMode} from '../types/attendance';
 
 const AttendanceScreen = () => {
   const {width} = useWindowDimensions();
   const isWide = width >= 920;
-  const {activeEmployee} = useAppStore();
   const [photoMode, setPhotoMode] = useState<PhotoMode>('Lokasi kerja');
-  const [note, setNote] = useState('');
   
   // State baru untuk menyimpan foto dari kamera
   const [photoUri, setPhotoUri] = useState<string | null>(null);
@@ -130,7 +126,7 @@ const AttendanceScreen = () => {
           setIsLoading(false);
         }
       },
-      error => {
+      _error => {
         Alert.alert('Error GPS', 'Gagal mendapatkan lokasi.');
         setIsLoading(false);
       },
@@ -151,9 +147,9 @@ const AttendanceScreen = () => {
             <View style={styles.photoBox}>
               <View style={styles.photoPreview}>
                 {photoUri ? (
-                  <Image source={{ uri: photoUri }} style={{ width: '100%', height: '100%', borderRadius: 8 }} />
+                  <Image source={{ uri: photoUri }} style={styles.photoImage} />
                 ) : (
-                  <View style={{ justifyContent: 'center', alignItems: 'center', flex: 1 }}>
+                  <View style={styles.emptyPhotoPreview}>
                      <Text style={styles.photoPreviewLabel}>Wajib Selfie</Text>
                   </View>
                 )}
@@ -183,7 +179,7 @@ const AttendanceScreen = () => {
                 disabled={isLoading}
               />
             </View>
-            {isLoading && <ActivityIndicator size="small" color={colors.brand} style={{marginTop: 10}} />}
+            {isLoading && <ActivityIndicator size="small" color={colors.brand} style={styles.loader} />}
             <Text style={styles.message}>{message}</Text>
           </Card>
         </View>
@@ -216,6 +212,8 @@ const styles = StyleSheet.create({
   sideColumnWide: { width: 354 },
   photoBox: { flexDirection: 'row', gap: 14, marginTop: 18, borderRadius: 8, backgroundColor: '#F5F8FA', padding: 12 },
   photoPreview: { width: 140, minHeight: 140, borderRadius: 8, backgroundColor: colors.brandSoft, borderWidth: 1, borderColor: '#CADCE7', padding: 12 },
+  photoImage: { width: '100%', height: '100%', borderRadius: 8 },
+  emptyPhotoPreview: { justifyContent: 'center', alignItems: 'center', flex: 1 },
   photoPreviewLabel: { color: '#3C6578', fontSize: 11, fontWeight: '900', textTransform: 'uppercase' },
   photoInfo: { flex: 1, justifyContent: 'center' },
   infoLabel: { color: colors.muted, fontSize: 13, fontWeight: '900' },
@@ -223,6 +221,7 @@ const styles = StyleSheet.create({
   infoHint: { color: colors.muted, fontSize: 12, lineHeight: 17, marginTop: 8 },
   formGap: { gap: 10, marginTop: 14 },
   actionRow: { flexDirection: 'row', gap: 12, marginTop: 16 },
+  loader: { marginTop: 10 },
   message: { color: colors.danger || 'red', fontSize: 13, textAlign: 'center', marginTop: 12, fontWeight: 'bold' },
   listGap: { gap: 10 },
   scheduleItem: { borderRadius: 8, borderWidth: 1, borderColor: colors.line, padding: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

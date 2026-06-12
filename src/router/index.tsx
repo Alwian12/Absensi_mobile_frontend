@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -57,7 +57,7 @@ const RouterContent = () => {
   // Menampilkan layar loading saat mengecek token di memori HP
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.brandSoft }}>
+      <View style={styles.loadingScreen}>
         <ActivityIndicator size="large" color={colors.brand} />
       </View>
     );
@@ -83,3 +83,12 @@ const Router = () => (
 );
 
 export default Router;
+
+const styles = StyleSheet.create({
+  loadingScreen: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.brandSoft,
+  },
+});

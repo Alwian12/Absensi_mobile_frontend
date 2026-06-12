@@ -19,7 +19,6 @@ import { colors } from '../components/Theme';
 const ReportsScreen = () => {
   const { width } = useWindowDimensions();
   const isWide = width >= 920;
-  const isTablet = width >= 680;
 
   const [historyRecords, setHistoryRecords] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -128,19 +127,23 @@ const ReportsScreen = () => {
         
         {/* Kolom Utama: Daftar Riwayat */}
         <View style={styles.mainColumn}>
-          <Card style={{ flex: 1, minHeight: 400 }}>
+          <Card style={styles.historyPanel}>
             <SectionHeader
               title="Daftar Kehadiran"
               subtitle="Diurutkan dari yang terbaru"
             />
             {isLoading ? (
-              <ActivityIndicator size="large" color={colors.brand} style={{ marginTop: 40 }} />
+              <ActivityIndicator
+                size="large"
+                color={colors.brand}
+                style={styles.loader}
+              />
             ) : historyRecords.length > 0 ? (
               <FlatList
                 data={historyRecords}
                 keyExtractor={(item) => item.id.toString()}
                 renderItem={renderHistoryItem}
-                contentContainerStyle={{ gap: 12, paddingBottom: 20 }}
+                contentContainerStyle={styles.historyList}
                 showsVerticalScrollIndicator={false}
               />
             ) : (
@@ -186,6 +189,9 @@ const styles = StyleSheet.create({
   mainColumn: { flex: 1, gap: 16 },
   sideColumn: { gap: 16 },
   sideColumnWide: { width: 360 },
+  historyPanel: { flex: 1, minHeight: 400 },
+  loader: { marginTop: 40 },
+  historyList: { gap: 12, paddingBottom: 20 },
   
   // Style untuk List Riwayat
   historyCard: {

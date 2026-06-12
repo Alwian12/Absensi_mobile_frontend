@@ -37,7 +37,7 @@ const ProfileScreen = () => {
       try {
         const response = await api.get('/api/auth/me');
         setProfileData({ ...response.data, roleType: roleStr });
-      } catch (apiError) {
+      } catch {
         // Jika gagal API (misal token admin beda jalur), ambil cadangan dari Storage
         const userStr = await AsyncStorage.getItem('userData');
         if (userStr) {
@@ -63,14 +63,8 @@ const ProfileScreen = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              // 1. Hapus semua data sesi (Token JWT dll) dari memori HP
-              await AsyncStorage.removeItem('userToken');
-              await AsyncStorage.removeItem('userData');
-              await AsyncStorage.removeItem('userRole');
-              
-              // 2. Ubah state global agar navigasi kembali ke layar Login
-              signOut();
-            } catch (e) {
+              await signOut();
+            } catch {
               Alert.alert('Error', 'Gagal melakukan logout');
             }
           },
@@ -84,7 +78,11 @@ const ProfileScreen = () => {
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         <Card style={styles.card}>
           {isLoading ? (
-            <ActivityIndicator size="large" color={colors.brand} style={{ marginVertical: 30 }} />
+            <ActivityIndicator
+              size="large"
+              color={colors.brand}
+              style={styles.loader}
+            />
           ) : (
             <>
               <View style={styles.header}>
@@ -135,11 +133,11 @@ const ProfileScreen = () => {
                   onPress={() => Alert.alert('Info', 'Fitur ganti password via aplikasi segera hadir.')} 
                   variant="secondary" 
                 />
-                <View style={{ height: 12 }} />
+                <View style={styles.buttonSpacer} />
                 <Button 
                   label="Logout Keluar Sistem" 
                   onPress={handleLogout} 
-                  style={{ backgroundColor: colors.danger || '#ef4444' }} // Merah untuk logout
+                  variant="danger"
                 />
               </View>
             </>
@@ -227,5 +225,11 @@ const styles = StyleSheet.create({
   },
   actionSection: {
     marginTop: 10,
+  },
+  loader: {
+    marginVertical: 30,
+  },
+  buttonSpacer: {
+    height: 12,
   },
 });

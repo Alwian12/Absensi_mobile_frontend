@@ -2,10 +2,12 @@ import React from 'react';
 import {
   Pressable,
   StyleSheet,
+  StyleProp,
   Text,
   TextInput,
   TextInputProps,
   View,
+  ViewStyle,
 } from 'react-native';
 
 import {colors} from './Theme';
@@ -14,21 +16,34 @@ type ButtonProps = {
   label: string;
   onPress: () => void;
   variant?: 'primary' | 'secondary' | 'danger';
+  disabled?: boolean;
+  style?: StyleProp<ViewStyle>;
 };
 
-export const Button = ({label, onPress, variant = 'primary'}: ButtonProps) => (
+export const Button = ({
+  label,
+  onPress,
+  variant = 'primary',
+  disabled = false,
+  style,
+}: ButtonProps) => (
   <Pressable
+    accessibilityRole="button"
+    disabled={disabled}
     onPress={onPress}
     style={({pressed}) => [
       styles.button,
       variant === 'secondary' && styles.buttonSecondary,
       variant === 'danger' && styles.buttonDanger,
-      pressed && styles.pressed,
+      disabled && styles.buttonDisabled,
+      pressed && !disabled && styles.pressed,
+      style,
     ]}>
     <Text
       style={[
         styles.buttonText,
         variant === 'secondary' && styles.buttonTextSecondary,
+        disabled && styles.buttonTextDisabled,
       ]}>
       {label}
     </Text>
@@ -95,6 +110,9 @@ const styles = StyleSheet.create({
   buttonDanger: {
     backgroundColor: colors.red,
   },
+  buttonDisabled: {
+    opacity: 0.55,
+  },
   buttonText: {
     color: '#FFFFFF',
     fontSize: 15,
@@ -102,6 +120,9 @@ const styles = StyleSheet.create({
   },
   buttonTextSecondary: {
     color: colors.green,
+  },
+  buttonTextDisabled: {
+    color: '#FFFFFF',
   },
   input: {
     minHeight: 46,
