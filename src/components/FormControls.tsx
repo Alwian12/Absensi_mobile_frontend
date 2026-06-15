@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  ActivityIndicator,
   Pressable,
   StyleSheet,
   StyleProp,
@@ -10,13 +11,16 @@ import {
   ViewStyle,
 } from 'react-native';
 
-import {colors} from './Theme';
+import {Icon, IconName} from './Icon';
+import {colors, radius} from './Theme';
 
 type ButtonProps = {
   label: string;
   onPress: () => void;
   variant?: 'primary' | 'secondary' | 'danger';
+  icon?: IconName;
   disabled?: boolean;
+  loading?: boolean;
   style?: StyleProp<ViewStyle>;
 };
 
@@ -24,26 +28,43 @@ export const Button = ({
   label,
   onPress,
   variant = 'primary',
+  icon,
   disabled = false,
+  loading = false,
   style,
 }: ButtonProps) => (
   <Pressable
     accessibilityRole="button"
-    disabled={disabled}
+    disabled={disabled || loading}
     onPress={onPress}
     style={({pressed}) => [
       styles.button,
       variant === 'secondary' && styles.buttonSecondary,
       variant === 'danger' && styles.buttonDanger,
-      disabled && styles.buttonDisabled,
-      pressed && !disabled && styles.pressed,
+      (disabled || loading) && styles.buttonDisabled,
+      pressed && !disabled && !loading && styles.pressed,
       style,
     ]}>
+    {loading ? (
+      <ActivityIndicator
+        color={variant === 'secondary' ? colors.brand : colors.white}
+      />
+    ) : icon ? (
+      <Icon
+        name={icon}
+        size={18}
+        color={variant === 'secondary' ? colors.brand : colors.white}
+        strokeWidth={2.3}
+      />
+    ) : null}
     <Text
       style={[
         styles.buttonText,
         variant === 'secondary' && styles.buttonTextSecondary,
-        disabled && styles.buttonTextDisabled,
+        (disabled || loading) &&
+          (variant === 'secondary'
+            ? styles.buttonTextSecondaryDisabled
+            : styles.buttonTextDisabled),
       ]}>
       {label}
     </Text>
@@ -52,7 +73,7 @@ export const Button = ({
 
 export const Field = (props: TextInputProps) => (
   <TextInput
-    placeholderTextColor="#8A97A6"
+    placeholderTextColor={colors.faint}
     {...props}
     style={[styles.input, props.style]}
   />
@@ -95,17 +116,19 @@ export const Segmented = <T extends string>({
 
 const styles = StyleSheet.create({
   button: {
-    minHeight: 48,
-    borderRadius: 8,
-    backgroundColor: colors.green,
+    minHeight: 50,
+    borderRadius: radius.md,
+    backgroundColor: colors.brand,
     alignItems: 'center',
     justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
     paddingHorizontal: 14,
   },
   buttonSecondary: {
-    backgroundColor: '#E9F6EE',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#B7DEC7',
+    borderColor: colors.lineStrong,
   },
   buttonDanger: {
     backgroundColor: colors.red,
@@ -114,50 +137,60 @@ const styles = StyleSheet.create({
     opacity: 0.55,
   },
   buttonText: {
-    color: '#FFFFFF',
+    color: colors.white,
     fontSize: 15,
     fontWeight: '900',
+    textAlign: 'center',
+    flexShrink: 1,
   },
   buttonTextSecondary: {
-    color: colors.green,
+    color: colors.brand,
   },
   buttonTextDisabled: {
-    color: '#FFFFFF',
+    color: colors.white,
+  },
+  buttonTextSecondaryDisabled: {
+    color: colors.muted,
   },
   input: {
-    minHeight: 46,
-    borderRadius: 8,
+    minHeight: 50,
+    borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: '#D8E1EA',
-    backgroundColor: '#F8FAFC',
-    paddingHorizontal: 13,
+    borderColor: colors.line,
+    backgroundColor: colors.panelAlt,
+    paddingHorizontal: 14,
     color: colors.ink,
     fontSize: 14,
+    fontWeight: '700',
   },
   segmented: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 6,
+    borderRadius: radius.md,
+    backgroundColor: '#EEF2F5',
+    padding: 4,
   },
   segmentButton: {
-    borderRadius: 8,
+    borderRadius: radius.sm,
     borderWidth: 1,
-    borderColor: '#D5DFE8',
-    paddingHorizontal: 11,
+    borderColor: 'transparent',
+    paddingHorizontal: 12,
     paddingVertical: 9,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'transparent',
   },
   segmentButtonActive: {
-    backgroundColor: colors.brand,
-    borderColor: colors.brand,
+    backgroundColor: colors.surface,
+    borderColor: colors.line,
   },
   segmentText: {
-    color: '#52616B',
+    color: colors.muted,
     fontSize: 12,
     fontWeight: '900',
+    textTransform: 'capitalize',
   },
   segmentTextActive: {
-    color: '#FFFFFF',
+    color: colors.brandDark,
   },
   pressed: {
     opacity: 0.76,

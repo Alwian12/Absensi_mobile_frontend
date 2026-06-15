@@ -7,7 +7,6 @@ import {
   PermissionsAndroid,
   Platform,
   Alert,
-  ActivityIndicator,
   Image,
 } from 'react-native';
 import Geolocation from 'react-native-geolocation-service';
@@ -15,8 +14,9 @@ import { launchCamera } from 'react-native-image-picker';
 import api from '../utils/api'; // Import koneksi API kita
 
 import {Button, Segmented} from '../components/FormControls';
+import {Icon} from '../components/Icon';
 import {Card, Screen, SectionHeader} from '../components/Screen';
-import {colors} from '../components/Theme';
+import {colors, radius} from '../components/Theme';
 import {photoModes, scheduleItems} from '../data/attendance';
 import type {PhotoMode} from '../types/attendance';
 
@@ -138,10 +138,10 @@ const AttendanceScreen = () => {
     <Screen title="Absensi Selfie" badge="GPS + Server Backend Terhubung">
       <View style={[styles.grid, isWide && styles.gridWide]}>
         <View style={styles.mainColumn}>
-          <Card>
+          <Card style={styles.attendanceCard}>
             <SectionHeader
               title="Absen Hari Ini"
-              subtitle="Pastikan wajah terlihat jelas dan berada di area kantor"
+              subtitle="Ambil selfie, validasi GPS, lalu kirim ke server"
             />
             
             <View style={styles.photoBox}>
@@ -150,12 +150,21 @@ const AttendanceScreen = () => {
                   <Image source={{ uri: photoUri }} style={styles.photoImage} />
                 ) : (
                   <View style={styles.emptyPhotoPreview}>
-                     <Text style={styles.photoPreviewLabel}>Wajib Selfie</Text>
+                    <Icon name="camera" size={34} color={colors.brand} strokeWidth={2.2} />
+                    <Text style={styles.photoPreviewLabel}>Wajib Selfie</Text>
                   </View>
                 )}
               </View>
               <View style={styles.photoInfo}>
-                <Text style={styles.infoLabel}>Status Pengiriman</Text>
+                <View style={styles.infoStatusRow}>
+                  <Icon
+                    name={photoUri ? 'check' : 'alert'}
+                    size={17}
+                    color={photoUri ? colors.green : colors.amber}
+                    strokeWidth={2.4}
+                  />
+                  <Text style={styles.infoLabel}>Status Pengiriman</Text>
+                </View>
                 <Text style={styles.infoValue}>{photoUri ? 'Foto Tersimpan (Draft)' : 'Belum ada foto'}</Text>
                 <Text style={styles.infoHint}>Radius otomatis dicek oleh server backend.</Text>
               </View>
@@ -163,23 +172,32 @@ const AttendanceScreen = () => {
 
             <View style={styles.formGap}>
               <Segmented items={photoModes} value={photoMode} onChange={setPhotoMode} />
-              <Button label="Buka Kamera Depan" onPress={openCamera} disabled={isLoading} />
+              <Button
+                label="Buka Kamera Depan"
+                icon="camera"
+                onPress={openCamera}
+                disabled={isLoading}
+              />
             </View>
 
             <View style={styles.actionRow}>
               <Button
                 label={isLoading ? "Memproses..." : "Absen Masuk"}
+                icon="logIn"
                 onPress={() => saveAttendance('masuk')}
                 disabled={isLoading}
+                loading={isLoading}
+                style={styles.actionButton}
               />
               <Button
                 label={isLoading ? "Memproses..." : "Absen Pulang"}
+                icon="logOut"
                 onPress={() => saveAttendance('pulang')}
                 variant="secondary"
                 disabled={isLoading}
+                style={styles.actionButton}
               />
             </View>
-            {isLoading && <ActivityIndicator size="small" color={colors.brand} style={styles.loader} />}
             <Text style={styles.message}>{message}</Text>
           </Card>
         </View>
@@ -190,8 +208,13 @@ const AttendanceScreen = () => {
             <View style={styles.listGap}>
               {scheduleItems.map(item => (
                 <View key={item.label} style={styles.scheduleItem}>
-                  <Text style={styles.scheduleLabel}>{item.label}</Text>
-                  <Text style={styles.scheduleValue}>{item.value}</Text>
+                  <View style={styles.scheduleIcon}>
+                    <Icon name="calendar" size={18} color={colors.brand} strokeWidth={2.3} />
+                  </View>
+                  <View style={styles.scheduleText}>
+                    <Text style={styles.scheduleLabel}>{item.label}</Text>
+                    <Text style={styles.scheduleValue}>{item.value}</Text>
+                  </View>
                 </View>
               ))}
             </View>
@@ -210,21 +233,25 @@ const styles = StyleSheet.create({
   mainColumn: { flex: 1 },
   sideColumn: { gap: 16 },
   sideColumnWide: { width: 354 },
-  photoBox: { flexDirection: 'row', gap: 14, marginTop: 18, borderRadius: 8, backgroundColor: '#F5F8FA', padding: 12 },
-  photoPreview: { width: 140, minHeight: 140, borderRadius: 8, backgroundColor: colors.brandSoft, borderWidth: 1, borderColor: '#CADCE7', padding: 12 },
-  photoImage: { width: '100%', height: '100%', borderRadius: 8 },
-  emptyPhotoPreview: { justifyContent: 'center', alignItems: 'center', flex: 1 },
-  photoPreviewLabel: { color: '#3C6578', fontSize: 11, fontWeight: '900', textTransform: 'uppercase' },
+  attendanceCard: { gap: 0 },
+  photoBox: { flexDirection: 'row', gap: 14, marginTop: 4, borderRadius: radius.md, backgroundColor: colors.panelAlt, borderWidth: 1, borderColor: colors.line, padding: 12 },
+  photoPreview: { width: 142, minHeight: 142, borderRadius: radius.md, backgroundColor: colors.brandSoft, borderWidth: 1, borderColor: colors.lineStrong, padding: 10 },
+  photoImage: { width: '100%', height: '100%', borderRadius: radius.sm },
+  emptyPhotoPreview: { justifyContent: 'center', alignItems: 'center', flex: 1, gap: 10 },
+  photoPreviewLabel: { color: colors.brandDark, fontSize: 11, fontWeight: '900', textTransform: 'uppercase' },
   photoInfo: { flex: 1, justifyContent: 'center' },
-  infoLabel: { color: colors.muted, fontSize: 13, fontWeight: '900' },
+  infoStatusRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  infoLabel: { color: colors.muted, fontSize: 12, fontWeight: '900', textTransform: 'uppercase' },
   infoValue: { color: colors.ink, fontSize: 17, fontWeight: '900', marginTop: 6, lineHeight: 22 },
   infoHint: { color: colors.muted, fontSize: 12, lineHeight: 17, marginTop: 8 },
   formGap: { gap: 10, marginTop: 14 },
-  actionRow: { flexDirection: 'row', gap: 12, marginTop: 16 },
-  loader: { marginTop: 10 },
-  message: { color: colors.danger || 'red', fontSize: 13, textAlign: 'center', marginTop: 12, fontWeight: 'bold' },
+  actionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 16 },
+  actionButton: { flex: 1, minWidth: 150 },
+  message: { color: colors.muted, fontSize: 13, textAlign: 'center', marginTop: 12, fontWeight: '800', lineHeight: 18 },
   listGap: { gap: 10 },
-  scheduleItem: { borderRadius: 8, borderWidth: 1, borderColor: colors.line, padding: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  scheduleLabel: { color: colors.muted, fontSize: 13, fontWeight: '900' },
-  scheduleValue: { color: colors.ink, fontSize: 18, fontWeight: '900' },
+  scheduleItem: { borderRadius: radius.md, borderWidth: 1, borderColor: colors.line, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.panelAlt },
+  scheduleIcon: { width: 38, height: 38, borderRadius: radius.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, alignItems: 'center', justifyContent: 'center' },
+  scheduleText: { flex: 1 },
+  scheduleLabel: { color: colors.muted, fontSize: 12, fontWeight: '900', textTransform: 'uppercase' },
+  scheduleValue: { color: colors.ink, fontSize: 18, fontWeight: '900', marginTop: 3 },
 });

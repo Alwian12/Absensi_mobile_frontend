@@ -12,13 +12,22 @@ import {
 import {useFocusEffect} from '@react-navigation/native';
 import {launchImageLibrary} from 'react-native-image-picker';
 
+import {RequestBadge} from '../components/Badge';
 import {Button, Field, Segmented} from '../components/FormControls';
+import {Icon} from '../components/Icon';
 import {Card, Screen, SectionHeader} from '../components/Screen';
-import {colors} from '../components/Theme';
+import {colors, radius} from '../components/Theme';
+import type {RequestStatus} from '../types/attendance';
 import api from '../utils/api';
 
 const jenisIzinOptions = ['sakit', 'izin', 'cuti', 'pulang_cepat'];
 const todayIso = () => new Date().toISOString().split('T')[0];
+const normalizeRequestStatus = (status?: string): RequestStatus => {
+  if (status === 'disetujui' || status === 'ditolak') {
+    return status;
+  }
+  return 'menunggu';
+};
 
 const RequestsScreen = () => {
   const {width} = useWindowDimensions();
@@ -114,8 +123,13 @@ const RequestsScreen = () => {
   const renderRequestItem = ({item}: {item: any}) => (
     <View style={styles.requestItem}>
       <View style={styles.requestHeader}>
-        <Text style={styles.requestType}>{item.jenis || item.type || 'Izin'}</Text>
-        <Text style={styles.requestStatus}>{item.status || 'menunggu'}</Text>
+        <View style={styles.requestTitleGroup}>
+          <View style={styles.requestIcon}>
+            <Icon name="file" size={17} color={colors.brand} strokeWidth={2.3} />
+          </View>
+          <Text style={styles.requestType}>{item.jenis || item.type || 'Izin'}</Text>
+        </View>
+        <RequestBadge status={normalizeRequestStatus(item.status)} />
       </View>
       <Text style={styles.requestDate}>
         {item.tanggal_mulai || item.date || '-'}
@@ -131,7 +145,7 @@ const RequestsScreen = () => {
     <Screen title="Pengajuan Izin" badge="Form Izin Online">
       <View style={[styles.grid, isWide && styles.gridWide]}>
         <View style={styles.mainColumn}>
-          <Card>
+          <Card style={styles.formCard}>
             <SectionHeader
               title="Form Pengajuan"
               subtitle="Isi tanggal, jenis izin, alasan, dan lampiran bila diperlukan"
@@ -165,7 +179,10 @@ const RequestsScreen = () => {
 
             <View style={styles.attachmentBox}>
               <View style={styles.attachmentInfo}>
-                <Text style={styles.attachmentLabel}>Lampiran</Text>
+                <View style={styles.attachmentTitleRow}>
+                  <Icon name="paperclip" size={17} color={colors.brand} strokeWidth={2.3} />
+                  <Text style={styles.attachmentLabel}>Lampiran</Text>
+                </View>
                 <Text style={styles.attachmentValue}>
                   {lampiran?.fileName || 'Belum ada lampiran'}
                 </Text>
@@ -178,14 +195,19 @@ const RequestsScreen = () => {
             <View style={styles.actionRow}>
               <Button
                 label="Pilih Lampiran"
+                icon="paperclip"
                 onPress={pickImage}
                 variant="secondary"
                 disabled={isSubmitting}
+                style={styles.actionButton}
               />
               <Button
                 label={isSubmitting ? 'Mengirim...' : 'Kirim Pengajuan'}
+                icon="send"
                 onPress={handleSubmit}
                 disabled={isSubmitting}
+                loading={isSubmitting}
+                style={styles.actionButton}
               />
             </View>
           </Card>
@@ -227,6 +249,7 @@ const styles = StyleSheet.create({
   mainColumn: {flex: 1},
   sideColumn: {gap: 16},
   sideColumnWide: {width: 380},
+  formCard: {gap: 0},
   formGap: {gap: 10},
   reasonInput: {
     minHeight: 100,
@@ -234,8 +257,8 @@ const styles = StyleSheet.create({
     paddingTop: 12,
   },
   attachmentBox: {
-    borderRadius: 8,
-    backgroundColor: '#F8FAFC',
+    borderRadius: radius.md,
+    backgroundColor: colors.panelAlt,
     borderWidth: 1,
     borderColor: colors.line,
     padding: 12,
@@ -243,12 +266,13 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   attachmentInfo: {gap: 4},
-  attachmentLabel: {color: colors.muted, fontSize: 12, fontWeight: '900'},
+  attachmentTitleRow: {flexDirection: 'row', alignItems: 'center', gap: 7},
+  attachmentLabel: {color: colors.muted, fontSize: 12, fontWeight: '900', textTransform: 'uppercase'},
   attachmentValue: {color: colors.ink, fontSize: 14, fontWeight: '900'},
   attachmentImage: {
     width: '100%',
     height: 150,
-    borderRadius: 8,
+    borderRadius: radius.md,
     backgroundColor: colors.brandSoft,
   },
   actionRow: {
@@ -257,28 +281,42 @@ const styles = StyleSheet.create({
     gap: 10,
     marginTop: 16,
   },
+  actionButton: {flex: 1, minWidth: 150},
   requestList: {gap: 10},
   requestItem: {
-    borderRadius: 8,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.panelAlt,
     padding: 12,
   },
   requestHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     gap: 12,
   },
+  requestTitleGroup: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+  },
+  requestIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   requestType: {
+    flex: 1,
     color: colors.ink,
     fontSize: 15,
-    fontWeight: '900',
-    textTransform: 'capitalize',
-  },
-  requestStatus: {
-    color: colors.amber,
-    fontSize: 12,
     fontWeight: '900',
     textTransform: 'capitalize',
   },

@@ -3,8 +3,9 @@ import {Pressable, StyleSheet, Text, View, useWindowDimensions} from 'react-nati
 
 import {AttendanceBadge} from '../components/Badge';
 import {Field, Segmented} from '../components/FormControls';
+import {Icon} from '../components/Icon';
 import {Card, Screen, SectionHeader} from '../components/Screen';
-import {colors} from '../components/Theme';
+import {colors, radius} from '../components/Theme';
 import {useAppStore} from '../state/AppStore';
 import type {AttendanceRecord, AttendanceStatus} from '../types/attendance';
 
@@ -113,7 +114,10 @@ const TeamScreen = () => {
             />
           </View>
           <View style={styles.proofBox}>
-            <Text style={styles.proofTitle}>Catatan bukti foto</Text>
+            <View style={styles.proofTitleRow}>
+              <Icon name="camera" size={17} color={colors.brand} strokeWidth={2.3} />
+              <Text style={styles.proofTitle}>Catatan bukti foto</Text>
+            </View>
             <Text style={styles.proofText}>
               {selectedRecord.proof?.note ??
                 'Pegawai belum melampirkan bukti foto.'}
@@ -188,7 +192,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   item: {
-    borderRadius: 8,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.line,
     padding: 12,
@@ -197,19 +201,21 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   itemSelected: {
-    borderColor: colors.green,
-    backgroundColor: '#F9FFFB',
+    borderColor: colors.brand,
+    backgroundColor: colors.brandSoft,
   },
   avatar: {
     width: 52,
     height: 52,
-    borderRadius: 8,
-    backgroundColor: '#DDEAF2',
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
-    color: colors.brand,
+    color: colors.brandDark,
     fontSize: 16,
     fontWeight: '900',
   },
@@ -235,7 +241,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   timeText: {
-    color: '#52616B',
+    color: colors.muted,
     fontSize: 12,
     fontWeight: '800',
   },
@@ -247,8 +253,10 @@ const styles = StyleSheet.create({
   detailAvatar: {
     width: 58,
     height: 58,
-    borderRadius: 8,
-    backgroundColor: '#DDEAF2',
+    borderRadius: radius.md,
+    backgroundColor: colors.brandSoft,
+    borderWidth: 1,
+    borderColor: colors.line,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -281,8 +289,8 @@ const styles = StyleSheet.create({
   infoBox: {
     width: '48%',
     minHeight: 78,
-    borderRadius: 8,
-    backgroundColor: '#F8FAFC',
+    borderRadius: radius.md,
+    backgroundColor: colors.panelAlt,
     borderWidth: 1,
     borderColor: colors.line,
     padding: 12,
@@ -299,13 +307,20 @@ const styles = StyleSheet.create({
     marginTop: 7,
   },
   proofBox: {
-    borderRadius: 8,
-    backgroundColor: '#F5F8FA',
+    borderRadius: radius.md,
+    backgroundColor: colors.panelAlt,
+    borderWidth: 1,
+    borderColor: colors.line,
     padding: 12,
     marginTop: 12,
   },
+  proofTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
   proofTitle: {
-    color: colors.brand,
+    color: colors.ink,
     fontSize: 13,
     fontWeight: '900',
   },

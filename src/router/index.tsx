@@ -4,6 +4,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
+import { Icon, IconName } from '../components/Icon';
 import { colors } from '../components/Theme';
 import { AppStoreProvider, useAppStore } from '../state/AppStore';
 
@@ -19,27 +20,50 @@ import TeamScreen from '../screens/TeamScreen';
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
+const tabIcons: Record<string, IconName> = {
+  Beranda: 'home',
+  Absensi: 'camera',
+  Pengajuan: 'file',
+  Tim: 'users',
+  Laporan: 'barChart',
+  Profil: 'user',
+};
+
 const MainTabs = () => {
   const { userRole } = useAppStore();
   const isManager = userRole === 'admin';
 
   return (
     <Tab.Navigator
-      screenOptions={{
+      screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: colors.brand, // Warna aktif menyesuaikan tema
-        tabBarInactiveTintColor: '#6B7280',
+        tabBarActiveTintColor: colors.brand,
+        tabBarInactiveTintColor: colors.faint,
+        tabBarIcon: ({ color, size, focused }) => (
+          <Icon
+            name={tabIcons[route.name] ?? 'home'}
+            size={size}
+            color={color}
+            strokeWidth={focused ? 2.5 : 2}
+          />
+        ),
         tabBarLabelStyle: {
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: '900',
         },
         tabBarStyle: {
-          borderTopColor: '#E2E8F0',
-          minHeight: 60,
-          paddingBottom: 8,
-          paddingTop: 8,
+          backgroundColor: colors.surface,
+          borderTopColor: colors.line,
+          minHeight: 68,
+          paddingBottom: 10,
+          paddingTop: 9,
+          elevation: 10,
+          shadowColor: '#0F172A',
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.08,
+          shadowRadius: 14,
         },
-      }}>
+      })}>
       <Tab.Screen name="Beranda" component={DashboardScreen} />
       <Tab.Screen name="Absensi" component={AttendanceScreen} />
       <Tab.Screen name="Pengajuan" component={RequestsScreen} />

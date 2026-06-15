@@ -1,40 +1,45 @@
-import React, { useState, useCallback } from 'react';
+import React, {useCallback, useState} from 'react';
 import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Share,
   StyleSheet,
   Text,
   View,
   useWindowDimensions,
-  Share,
-  Alert,
-  ActivityIndicator,
-  FlatList,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import {useFocusEffect} from '@react-navigation/native';
 
+import {AttendanceBadge} from '../components/Badge';
+import {Button} from '../components/FormControls';
+import {Icon} from '../components/Icon';
+import {Card, Screen, SectionHeader} from '../components/Screen';
+import {colors, radius} from '../components/Theme';
+import type {AttendanceStatus} from '../types/attendance';
 import api from '../utils/api';
-import { Button } from '../components/FormControls';
-import { Card, Screen, SectionHeader } from '../components/Screen';
-import { colors } from '../components/Theme';
+
+const normalizeAttendanceStatus = (status?: string): AttendanceStatus => {
+  if (status === 'tepat_waktu' || status === 'hadir') {
+    return 'hadir';
+  }
+  if (status === 'terlambat' || status === 'izin') {
+    return status;
+  }
+  return 'alpa';
+};
 
 const ReportsScreen = () => {
-  const { width } = useWindowDimensions();
+  const {width} = useWindowDimensions();
   const isWide = width >= 920;
 
   const [historyRecords, setHistoryRecords] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState('Data riwayat absensi terbaru');
 
-  // Mengambil data setiap kali layar Laporan dibuka
-  useFocusEffect(
-    useCallback(() => {
-      fetchHistory();
-    }, [])
-  );
-
   const fetchHistory = async () => {
     setIsLoading(true);
     try {
-      // Menembak endpoint history di backend
       const response = await api.get('/api/absensi/history?limit=30');
       setHistoryRecords(response.data);
       setMessage(`Berhasil memuat ${response.data.length} riwayat absensi.`);
@@ -46,7 +51,12 @@ const ReportsScreen = () => {
     }
   };
 
-  // Fungsi Export/Share Data Asli dari Backend
+  useFocusEffect(
+    useCallback(() => {
+      fetchHistory();
+    }, []),
+  );
+
   const handleExport = async () => {
     if (historyRecords.length === 0) {
       Alert.alert('Kosong', 'Tidak ada data absensi untuk diekspor.');
@@ -56,16 +66,14 @@ const ReportsScreen = () => {
     try {
       setMessage('Menyiapkan laporan...');
 
-      let reportText = `📊 *LAPORAN RIWAYAT ABSENSI*\n`;
+      let reportText = '*LAPORAN RIWAYAT ABSENSI*\n';
       reportText += `Tanggal Cetak: ${new Date().toLocaleDateString('id-ID')}\n\n`;
-      
-      reportText += `*RINCIAN KEHADIRAN (Terbaru):*\n`;
-      reportText += `--------------------------\n`;
+      reportText += '*RINCIAN KEHADIRAN (Terbaru):*\n';
+      reportText += '--------------------------\n';
 
       historyRecords.forEach((record, index) => {
-        // Format tanggal dari MySQL (YYYY-MM-DD) ke format lokal
         const tgl = new Date(record.tanggal).toLocaleDateString('id-ID');
-        
+
         reportText += `${index + 1}. Tanggal: ${tgl}\n`;
         reportText += `   Status Masuk: ${record.status_check_in?.toUpperCase() || '-'}\n`;
         reportText += `   Status Pulang: ${record.status_check_out?.toUpperCase() || '-'}\n`;
@@ -75,11 +83,11 @@ const ReportsScreen = () => {
 
       const result = await Share.share({
         message: reportText,
-        title: `Riwayat Absensi`,
+        title: 'Riwayat Absensi',
       });
 
       if (result.action === Share.sharedAction) {
-        setMessage('Laporan berhasil diekspor & dibagikan!');
+        setMessage('Laporan berhasil diekspor dan dibagikan.');
       } else if (result.action === Share.dismissedAction) {
         setMessage('Export dibatalkan oleh pengguna.');
       }
@@ -89,24 +97,21 @@ const ReportsScreen = () => {
     }
   };
 
-  // Komponen untuk me-render setiap baris riwayat
-  const renderHistoryItem = ({ item }: { item: any }) => {
+  const renderHistoryItem = ({item}: {item: any}) => {
     const tgl = new Date(item.tanggal).toLocaleDateString('id-ID');
-    
-    // Tentukan warna indikator berdasarkan status
-    let statusColor = colors.muted;
-    if (item.status_check_in === 'tepat_waktu') statusColor = colors.green;
-    if (item.status_check_in === 'terlambat') statusColor = '#C47C16';
-    if (item.status_check_in === 'izin') statusColor = colors.blue;
 
     return (
       <View style={styles.historyCard}>
         <View style={styles.historyHeader}>
-          <Text style={styles.historyDate}>{tgl}</Text>
-          <View style={[styles.statusBadge, { backgroundColor: statusColor }]}>
-            <Text style={styles.statusText}>{item.status_check_in?.replace('_', ' ').toUpperCase() || 'TIDAK HADIR'}</Text>
+          <View style={styles.historyDateGroup}>
+            <View style={styles.historyIcon}>
+              <Icon name="calendar" size={17} color={colors.brand} strokeWidth={2.3} />
+            </View>
+            <Text style={styles.historyDate}>{tgl}</Text>
           </View>
+          <AttendanceBadge status={normalizeAttendanceStatus(item.status_check_in)} />
         </View>
+
         <View style={styles.historyBody}>
           <View style={styles.timeInfo}>
             <Text style={styles.timeLabel}>Jam Masuk</Text>
@@ -124,8 +129,6 @@ const ReportsScreen = () => {
   return (
     <Screen title="Riwayat Absensi" badge="Data Tersinkronisasi">
       <View style={[styles.grid, isWide && styles.gridWide]}>
-        
-        {/* Kolom Utama: Daftar Riwayat */}
         <View style={styles.mainColumn}>
           <Card style={styles.historyPanel}>
             <SectionHeader
@@ -141,18 +144,20 @@ const ReportsScreen = () => {
             ) : historyRecords.length > 0 ? (
               <FlatList
                 data={historyRecords}
-                keyExtractor={(item) => item.id.toString()}
+                keyExtractor={item => item.id.toString()}
                 renderItem={renderHistoryItem}
                 contentContainerStyle={styles.historyList}
+                scrollEnabled={false}
                 showsVerticalScrollIndicator={false}
               />
             ) : (
-              <Text style={styles.emptyText}>Belum ada riwayat absensi yang ditemukan.</Text>
+              <Text style={styles.emptyText}>
+                Belum ada riwayat absensi yang ditemukan.
+              </Text>
             )}
           </Card>
         </View>
 
-        {/* Kolom Samping: Aksi & Info */}
         <View style={[styles.sideColumn, isWide && styles.sideColumnWide]}>
           <Card>
             <SectionHeader
@@ -160,11 +165,17 @@ const ReportsScreen = () => {
               subtitle="Cetak atau bagikan riwayat"
             />
             <View style={styles.reportBox}>
-              <Text style={styles.reportLabel}>Total Record</Text>
-              <Text style={styles.reportValue}>{historyRecords.length} Hari</Text>
+              <View style={styles.reportIcon}>
+                <Icon name="barChart" size={21} color={colors.brand} strokeWidth={2.3} />
+              </View>
+              <View style={styles.reportText}>
+                <Text style={styles.reportLabel}>Total Record</Text>
+                <Text style={styles.reportValue}>{historyRecords.length} Hari</Text>
+              </View>
             </View>
             <Button
-              label="Kirim Laporan (Share WA/Email)"
+              label="Bagikan Laporan"
+              icon="send"
               onPress={handleExport}
               disabled={isLoading || historyRecords.length === 0}
             />
@@ -175,7 +186,6 @@ const ReportsScreen = () => {
             <Text style={styles.message}>{message}</Text>
           </Card>
         </View>
-
       </View>
     </Screen>
   );
@@ -184,81 +194,104 @@ const ReportsScreen = () => {
 export default ReportsScreen;
 
 const styles = StyleSheet.create({
-  grid: { gap: 16 },
-  gridWide: { flexDirection: 'row', alignItems: 'flex-start' },
-  mainColumn: { flex: 1, gap: 16 },
-  sideColumn: { gap: 16 },
-  sideColumnWide: { width: 360 },
-  historyPanel: { flex: 1, minHeight: 400 },
-  loader: { marginTop: 40 },
-  historyList: { gap: 12, paddingBottom: 20 },
-  
-  // Style untuk List Riwayat
+  grid: {gap: 16},
+  gridWide: {flexDirection: 'row', alignItems: 'flex-start'},
+  mainColumn: {flex: 1, gap: 16},
+  sideColumn: {gap: 16},
+  sideColumnWide: {width: 360},
+  historyPanel: {flex: 1, minHeight: 400},
+  loader: {marginTop: 40},
+  historyList: {gap: 12, paddingBottom: 20},
   historyCard: {
     borderWidth: 1,
     borderColor: colors.line,
-    borderRadius: 8,
+    borderRadius: radius.md,
     padding: 14,
-    backgroundColor: '#F8FAFC'
+    backgroundColor: colors.panelAlt,
   },
   historyHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.line
+    gap: 10,
+  },
+  historyDateGroup: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+  },
+  historyIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   historyDate: {
-    fontWeight: 'bold',
+    flex: 1,
+    fontWeight: '900',
     fontSize: 15,
-    color: colors.ink
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  statusText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: 'bold'
+    color: colors.ink,
   },
   historyBody: {
     flexDirection: 'row',
-    justifyContent: 'space-around'
+    justifyContent: 'space-around',
+    borderTopWidth: 1,
+    borderTopColor: colors.line,
+    marginTop: 12,
+    paddingTop: 12,
   },
   timeInfo: {
-    alignItems: 'center'
+    alignItems: 'center',
   },
   timeLabel: {
     fontSize: 12,
     color: colors.muted,
-    marginBottom: 4
+    marginBottom: 4,
   },
   timeValue: {
     fontSize: 16,
     fontWeight: '900',
-    color: colors.ink
+    color: colors.ink,
   },
   emptyText: {
     textAlign: 'center',
     marginTop: 40,
     color: colors.muted,
-    fontStyle: 'italic'
+    fontStyle: 'italic',
   },
-
-  // Style untuk Laporan Box
   reportBox: {
-    borderRadius: 8,
-    backgroundColor: '#F8FAFC',
+    borderRadius: radius.md,
+    backgroundColor: colors.panelAlt,
     borderWidth: 1,
     borderColor: colors.line,
     padding: 12,
     marginBottom: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
-  reportLabel: { color: colors.muted, fontSize: 12, fontWeight: '900' },
-  reportValue: { color: colors.ink, fontSize: 20, fontWeight: '900', marginTop: 5 },
-  message: { color: colors.muted, fontSize: 13, lineHeight: 18 },
+  reportIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reportText: {flex: 1},
+  reportLabel: {color: colors.muted, fontSize: 12, fontWeight: '900'},
+  reportValue: {
+    color: colors.ink,
+    fontSize: 20,
+    fontWeight: '900',
+    marginTop: 5,
+  },
+  message: {color: colors.muted, fontSize: 13, lineHeight: 18},
 });
