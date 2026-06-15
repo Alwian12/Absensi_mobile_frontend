@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, { useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -11,16 +11,17 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { MotiView } from 'moti';
 
-import {Button, Field} from '../components/FormControls';
-import {Icon} from '../components/Icon';
-import {colors, radius, shadows} from '../components/Theme';
-import {useAppStore} from '../state/AppStore';
+import { Button, Field } from '../components/FormControls';
+import { Icon } from '../components/Icon';
+import { colors, radius, shadows, spacing } from '../components/Theme';
+import { useAppStore } from '../state/AppStore';
 import api from '../utils/api';
 
 const LoginScreen = () => {
-  const {signIn} = useAppStore();
-  const {width} = useWindowDimensions();
+  const { signIn } = useAppStore();
+  const { width } = useWindowDimensions();
   const isWide = width >= 820;
   const [loginType, setLoginType] = useState<'user' | 'admin'>('user');
   const [username, setUsername] = useState('');
@@ -47,7 +48,7 @@ const LoginScreen = () => {
               password,
             });
 
-      const {token, user, message} = response.data;
+      const { token, user, message } = response.data;
 
       await AsyncStorage.setItem('userToken', token);
       await AsyncStorage.setItem('userData', JSON.stringify(user));
@@ -69,36 +70,86 @@ const LoginScreen = () => {
   return (
     <KeyboardAvoidingView
       style={styles.keyboard}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
       <ScrollView
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}>
+        showsVerticalScrollIndicator={false}
+      >
         <View style={[styles.shell, isWide && styles.shellWide]}>
-          <View style={[styles.brandPanel, isWide && styles.brandPanelWide]}>
-            <View style={styles.brandMark}>
-              <Icon name="shield" color={colors.white} size={30} strokeWidth={2.4} />
-            </View>
-            <Text style={styles.brandEyebrow}>SIAP Absensi Kantor</Text>
-            <Text style={styles.brandTitle}>Absensi Honor Kantor</Text>
-            <Text style={styles.brandText}>
-              Masuk, pantau kehadiran, ajukan izin, dan sinkronkan data kantor
-              dalam satu aplikasi.
-            </Text>
-            <View style={styles.brandStats}>
+          {/* Brand Panel - Left side */}
+          <MotiView
+            from={{ opacity: 0, translateX: -40 }}
+            animate={{ opacity: 1, translateX: 0 }}
+            transition={{ type: 'timing', duration: 700 }}
+            style={[styles.brandPanel, isWide && styles.brandPanelWide]}
+          >
+            <MotiView
+              from={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: 'timing', duration: 600, delay: 200 }}
+            >
+              <View style={styles.brandMark}>
+                <Icon
+                  name="shield"
+                  color={colors.white}
+                  size={30}
+                  strokeWidth={2.4}
+                />
+              </View>
+            </MotiView>
+
+            <MotiView
+              from={{ opacity: 0, translateY: 20 }}
+              animate={{ opacity: 1, translateY: 0 }}
+              transition={{ type: 'timing', duration: 600, delay: 300 }}
+            >
+              <Text style={styles.brandEyebrow}>SIAP Absensi Kantor</Text>
+              <Text style={styles.brandTitle}>Absensi Honor Kantor</Text>
+              <Text style={styles.brandText}>
+                Masuk, pantau kehadiran, ajukan izin, dan sinkronkan data kantor
+                dalam satu aplikasi.
+              </Text>
+            </MotiView>
+
+            <MotiView
+              from={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ type: 'timing', duration: 600, delay: 400 }}
+              style={styles.brandStats}
+            >
               <MiniStat label="GPS" value="Aktif" />
               <MiniStat label="Foto" value="Selfie" />
               <MiniStat label="Data" value="Online" />
-            </View>
-          </View>
+            </MotiView>
+          </MotiView>
 
-          <View style={[styles.card, isWide && styles.cardWide]}>
-            <Text style={styles.formTitle}>Masuk ke akun</Text>
-            <Text style={styles.formSubtitle}>
-              Pilih role sesuai akses yang diberikan admin kantor.
-            </Text>
+          {/* Login Card - Right side */}
+          <MotiView
+            from={{ opacity: 0, translateX: 40 }}
+            animate={{ opacity: 1, translateX: 0 }}
+            transition={{ type: 'timing', duration: 700 }}
+            style={[styles.card, isWide && styles.cardWide]}
+          >
+            <MotiView
+              from={{ opacity: 0, translateY: 10 }}
+              animate={{ opacity: 1, translateY: 0 }}
+              transition={{ type: 'timing', duration: 600, delay: 200 }}
+            >
+              <Text style={styles.formTitle}>Masuk ke akun</Text>
+              <Text style={styles.formSubtitle}>
+                Pilih role sesuai akses yang diberikan admin kantor.
+              </Text>
+            </MotiView>
 
-            <View style={styles.roleSwitch}>
+            {/* Role Switch - Animated */}
+            <MotiView
+              from={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ type: 'timing', duration: 600, delay: 300 }}
+              style={styles.roleSwitch}
+            >
               <RoleTab
                 label="Pegawai"
                 active={loginType === 'user'}
@@ -111,9 +162,15 @@ const LoginScreen = () => {
                 icon="shield"
                 onPress={() => setLoginType('admin')}
               />
-            </View>
+            </MotiView>
 
-            <View style={styles.formGap}>
+            {/* Form Fields - Staggered Animation */}
+            <MotiView
+              from={{ opacity: 0, translateY: 20 }}
+              animate={{ opacity: 1, translateY: 0 }}
+              transition={{ type: 'timing', duration: 600, delay: 400 }}
+              style={styles.formGap}
+            >
               <View>
                 <Text style={styles.label}>
                   {loginType === 'admin' ? 'Username Admin' : 'Nama Lengkap'}
@@ -127,6 +184,8 @@ const LoginScreen = () => {
                   value={username}
                   onChangeText={setUsername}
                   autoCapitalize={loginType === 'admin' ? 'none' : 'words'}
+                  icon="user"
+                  variant="glass"
                 />
               </View>
 
@@ -137,25 +196,46 @@ const LoginScreen = () => {
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry
+                  icon="shield"
+                  variant="glass"
                 />
               </View>
-            </View>
+            </MotiView>
 
-            <Button
-              label={loading ? 'Memproses...' : 'Masuk Sekarang'}
-              icon="logIn"
-              loading={loading}
-              onPress={handleLogin}
-              style={styles.loginButton}
-            />
+            {/* Login Button - Animated */}
+            <MotiView
+              from={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ type: 'timing', duration: 600, delay: 500 }}
+            >
+              <Button
+                label={loading ? 'Memproses...' : 'Masuk Sekarang'}
+                icon="logIn"
+                loading={loading}
+                onPress={handleLogin}
+                style={styles.loginButton}
+                size="lg"
+              />
+            </MotiView>
 
-            <View style={styles.footerNote}>
-              <Icon name="check" color={colors.brand} size={17} strokeWidth={2.4} />
+            {/* Footer Note - Animated */}
+            <MotiView
+              from={{ opacity: 0, translateY: 10 }}
+              animate={{ opacity: 1, translateY: 0 }}
+              transition={{ type: 'timing', duration: 600, delay: 600 }}
+              style={styles.footerNote}
+            >
+              <Icon
+                name="check"
+                color={colors.brand}
+                size={17}
+                strokeWidth={2.4}
+              />
               <Text style={styles.footerText}>
                 Sesi disimpan aman di perangkat setelah login berhasil.
               </Text>
-            </View>
-          </View>
+            </MotiView>
+          </MotiView>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -173,203 +253,268 @@ const RoleTab = ({
   icon: 'user' | 'shield';
   onPress: () => void;
 }) => (
-  <Pressable
-    onPress={onPress}
-    style={({pressed}) => [
-      styles.roleTab,
-      active && styles.roleTabActive,
-      pressed && styles.pressed,
-    ]}>
-    <Icon
-      name={icon}
-      size={18}
-      color={active ? colors.brandDark : colors.muted}
-      strokeWidth={2.3}
-    />
-    <Text style={[styles.roleTabText, active && styles.roleTabTextActive]}>
-      {label}
-    </Text>
-  </Pressable>
+  <MotiView
+    animate={{
+      scale: active ? 1.02 : 1,
+    }}
+    transition={{ type: 'timing', duration: 150 }}
+  >
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.roleTab,
+        active && styles.roleTabActive,
+        pressed && styles.pressed,
+      ]}
+    >
+      <Icon
+        name={icon}
+        size={18}
+        color={active ? colors.brand : colors.muted}
+        strokeWidth={2.3}
+      />
+      <Text style={[styles.roleTabText, active && styles.roleTabTextActive]}>
+        {label}
+      </Text>
+    </Pressable>
+  </MotiView>
 );
 
-const MiniStat = ({label, value}: {label: string; value: string}) => (
-  <View style={styles.miniStat}>
-    <Text style={styles.miniStatLabel}>{label}</Text>
-    <Text style={styles.miniStatValue}>{value}</Text>
-  </View>
+const MiniStat = ({ label, value }: { label: string; value: string }) => (
+  <MotiView
+    from={{ opacity: 0, scale: 0.8 }}
+    animate={{ opacity: 1, scale: 1 }}
+    transition={{ type: 'timing', duration: 500 }}
+  >
+    <View style={styles.miniStat}>
+      <Text style={styles.miniStatLabel}>{label}</Text>
+      <Text style={styles.miniStatValue}>{value}</Text>
+    </View>
+  </MotiView>
 );
 
 export default LoginScreen;
+
+// ============================================
+// STYLES
+// ============================================
 
 const styles = StyleSheet.create({
   keyboard: {
     flex: 1,
     backgroundColor: colors.soft,
   },
+
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    padding: 18,
+    padding: spacing.lg,
   },
+
   shell: {
     width: '100%',
     maxWidth: 980,
     alignSelf: 'center',
-    gap: 14,
+    gap: spacing.lg,
   },
+
   shellWide: {
     flexDirection: 'row',
     alignItems: 'stretch',
   },
+
+  // ========== BRAND PANEL ==========
   brandPanel: {
     backgroundColor: colors.graphite,
-    borderRadius: radius.md,
-    padding: 22,
+    borderRadius: radius.xl,
+    padding: spacing.xl,
     overflow: 'hidden',
+    ...shadows.lift,
   },
+
   brandPanelWide: {
     flex: 1,
-    minHeight: 500,
+    minHeight: 520,
     justifyContent: 'space-between',
   },
+
   brandMark: {
-    width: 58,
-    height: 58,
-    borderRadius: radius.md,
+    width: 64,
+    height: 64,
+    borderRadius: radius.lg,
     backgroundColor: colors.brand,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 24,
+    marginBottom: spacing.xl,
+    ...shadows.lift,
   },
+
   brandEyebrow: {
-    color: '#9AE6DD',
-    fontSize: 12,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-  },
-  brandTitle: {
-    color: colors.white,
-    fontSize: 32,
-    fontWeight: '900',
-    letterSpacing: 0,
-    marginTop: 10,
-  },
-  brandText: {
-    color: '#D1D5DB',
-    fontSize: 15,
-    lineHeight: 22,
-    marginTop: 12,
-  },
-  brandStats: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 28,
-  },
-  miniStat: {
-    minWidth: 86,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: '#374151',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  miniStatLabel: {
-    color: '#9CA3AF',
+    color: '#A5F3FC',
     fontSize: 11,
     fontWeight: '900',
     textTransform: 'uppercase',
+    letterSpacing: 1,
   },
+
+  brandTitle: {
+    color: colors.white,
+    fontSize: 34,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+    marginTop: spacing.md,
+    lineHeight: 42,
+  },
+
+  brandText: {
+    color: '#D1D5DB',
+    fontSize: 15,
+    lineHeight: 24,
+    marginTop: spacing.md,
+    fontWeight: '500',
+  },
+
+  brandStats: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+    marginTop: spacing.xl,
+  },
+
+  miniStat: {
+    minWidth: 100,
+    borderRadius: radius.lg,
+    borderWidth: 1.5,
+    borderColor: '#374151',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  },
+
+  miniStatLabel: {
+    color: '#9CA3AF',
+    fontSize: 10,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+
   miniStatValue: {
     color: colors.white,
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '900',
-    marginTop: 4,
+    marginTop: spacing.xs,
   },
+
+  // ========== LOGIN CARD ==========
   card: {
     backgroundColor: colors.surface,
-    borderRadius: radius.md,
+    borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: colors.line,
-    padding: 22,
+    padding: spacing.xl,
     ...shadows.lift,
   },
+
   cardWide: {
     width: 420,
     justifyContent: 'center',
   },
+
   formTitle: {
     color: colors.ink,
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: '900',
-    letterSpacing: 0,
+    letterSpacing: -0.5,
+    lineHeight: 36,
   },
+
   formSubtitle: {
     color: colors.muted,
     fontSize: 14,
     lineHeight: 20,
-    marginTop: 8,
+    marginTop: spacing.sm,
+    fontWeight: '500',
   },
+
   roleSwitch: {
     flexDirection: 'row',
-    backgroundColor: '#EEF2F5',
-    borderRadius: radius.md,
-    padding: 4,
-    gap: 6,
-    marginTop: 24,
+    backgroundColor: colors.panelAlt,
+    borderRadius: radius.lg,
+    padding: spacing.xs,
+    gap: spacing.xs,
+    marginTop: spacing.xl,
   },
+
   roleTab: {
     flex: 1,
-    minHeight: 46,
-    borderRadius: radius.sm,
+    minHeight: 48,
+    borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
-    gap: 8,
+    gap: spacing.sm,
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: 'transparent',
   },
+
   roleTabActive: {
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: colors.brand,
+    ...shadows.card,
   },
+
   roleTabText: {
     color: colors.muted,
     fontSize: 13,
     fontWeight: '900',
+    letterSpacing: 0.3,
   },
+
   roleTabTextActive: {
-    color: colors.brandDark,
+    color: colors.brand,
   },
+
   formGap: {
-    gap: 14,
-    marginTop: 20,
+    gap: spacing.lg,
+    marginTop: spacing.xl,
   },
+
   label: {
     color: colors.ink,
     fontSize: 13,
     fontWeight: '900',
-    marginBottom: 8,
+    marginBottom: spacing.sm,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
+
   loginButton: {
-    marginTop: 22,
+    marginTop: spacing.xl,
   },
+
   footerNote: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    borderRadius: radius.md,
+    gap: spacing.md,
+    borderRadius: radius.lg,
     backgroundColor: colors.brandSoft,
-    padding: 12,
-    marginTop: 16,
+    padding: spacing.md,
+    marginTop: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.brandLight,
   },
+
   footerText: {
     flex: 1,
     color: colors.brandDark,
     fontSize: 12,
     fontWeight: '800',
-    lineHeight: 17,
+    lineHeight: 18,
   },
+
   pressed: {
-    opacity: 0.76,
+    opacity: 0.75,
   },
 });
